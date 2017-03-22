@@ -45,8 +45,8 @@ class ScumblrTask::PythonAnalyzer < ScumblrTask::Async
                             default: :High,
                             choices: [:High, :Medium, :Low]
                             },
-      :severity_level => {name: "Confidence Level",
-                          description: "Confidence level to include in results",
+      :severity_level => {name: "Severity Level",
+                          description: "Severity level to include in results",
                           required: false,
                           type: :choice,
                           default: :High,
@@ -71,7 +71,7 @@ class ScumblrTask::PythonAnalyzer < ScumblrTask::Async
     # Do setup
     super
 
-    @temp_path = @downloads_tmp_dir.to_s.strip
+    @temp_path = Rails.configuration.try(:downloads_tmp_dir).to_s.strip
     if @temp_path == ""
       @temp_path = "/tmp"
     end
@@ -130,19 +130,25 @@ class ScumblrTask::PythonAnalyzer < ScumblrTask::Async
     repo_local_path = ""
     findings = []
     begin
-      if (r.metadata["github_analyzer"]["git_clone_url"].nil? || r.metadata["github_analyzer"]["git_clone_url"].to_s.strip == "") && r.url !~ /github.com/
-        create_error("No URL for result: #{r.id.to_s}")
+      unless (r.metadata.try(:[], "github_analyzer").present? && r.metadata["github_analyzer"].try(:[], "git_clone_url").present?) || (r.metadata.try(:[], "depot_analyzer").present? && r.metadata["depot_analyzer"].try(:[], "git_clone_url"))
+        create_error("No  URL for result: #{r.id.to_s}")
       else
-        if r.metadata["github_analyzer"]["git_clone_url"].nil?
-          git_url = r.url + ".git"
-        else
-          git_url = r.metadata["github_analyzer"]["git_clone_url"]
+        if r.metadata.try(:[], "github_analyzer").present?
+          if r.metadata["github_analyzer"]["git_clone_url"].nil?
+            git_url = r.url + ".git"
+          else
+            git_url = r.metadata["github_analyzer"]["git_clone_url"]
+          end
+        elsif r.metadata.try(:[], "depot_analyzer").present?
+          git_url = r.metadata["depot_analyzer"]["git_clone_url"]
         end
         status = Timeout::timeout(600) do
           Rails.logger.info "Cloning and scanning #{git_url}"
           
           #download the repo so we can scan it
-          repo_local_path = "#{@temp_path}#{git_url.split('/').last.gsub(/\.git$/,"")}"
+          #byebug
+          
+          repo_local_path = "#{@temp_path}#{git_url.split('/').last.gsub(/\.git$/,"")}#{r.id}"
           dsd = RepoDownloader.new(git_url, repo_local_path)
           dsd.download
         end
@@ -174,9 +180,9 @@ class ScumblrTask::PythonAnalyzer < ScumblrTask::Async
         if !findings.empty?
           r.update_vulnerabilities(findings)
         end
-        if r.changed?
+        #if r.changed?
           r.save!
-        end
+        #end
       end
       #now that we're done with it, delete the cloned repo
     ensure

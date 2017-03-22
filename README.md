@@ -74,6 +74,17 @@ Take a look at the [wiki](https://github.com/Netflix/Scumblr/wiki) for detailed 
 
 ## Release History ##
 
+**Version 2.0.2** - "XSS fix" - *November 30th, 2016*
+
+This fixes a XSS issue on the main Tasks page reported by Michael Carlson.  The XSS vulnerability is only exploitable by administrator users of the application. 
+
+**Version 2.0.1a** - "System Metadata" - *November 15th, 2016*
+
+This is a minor release that adds some new functioanlity:
+
+* Creation of a system metadata model.  System metadata allows you to store collections of data to share across tasks.  
+* Extended curl security task and github security task to support system metadata.
+
 **Version 2.0.1** - "O'Reilly Security Edition" - *November 2nd, 2016*
 
 This is a minor release that addresses a few bugs and adds some new features. **Note: if upgrading from 2.0 make sure to run `bundle install` and restart your server.**

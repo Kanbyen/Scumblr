@@ -25,12 +25,10 @@ class ApplicationController < ActionController::Base
 
   rescue_from Exception, :with => :handler_exception
 
-
   before_filter :authenticate_user!
   before_filter :require_enabled
   
   force_ssl if: :ssl_configured?
-
 
   def require_enabled
     if(current_user && current_user.disabled ==true)
@@ -41,7 +39,7 @@ class ApplicationController < ActionController::Base
   end
 
   def ssl_configured?
-    !(Rails.env.development? || Rails.env.profile? || Rails.env.dirtylaundrydev? )
+    !(Rails.env.development? || Rails.env.profile? || Rails.env.test? )
   end
 
   def handler_exception(exception)

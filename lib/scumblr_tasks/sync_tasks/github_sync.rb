@@ -30,9 +30,16 @@ class ScumblrTask::GithubSyncAnalyzer < ScumblrTask::Base
   end
 
   def self.config_options
-    {:github_oauth_token =>{ name: "Github Oauth Token",
-      description: "Setting this token can provide access to private Github organization(s) or repo(s)",
-      required: false
+    {
+      :github_oauth_token => {
+        name: "Github Oauth Token",
+        description: "Setting this token can provide access to private Github organization(s) or repo(s)",
+        required: false
+      },
+      :github_api_endpoint => {
+        name: "Github Endpoint",
+        description: "Allow configurable endpoint for Github Enterprise deployments",
+        required: false
       }
     }
   end
@@ -65,15 +72,16 @@ class ScumblrTask::GithubSyncAnalyzer < ScumblrTask::Base
 
   def initialize(options={})
     super
-    
+
     @github_oauth_token = @github_oauth_token.to_s.strip
+    @github_api_endpoint = @github_api_endpoint.to_s.strip.empty? ? "https://api.github.com" : @github_api_endpoint
 
     if(@github_oauth_token.present?)
-      @github = Github.new oauth_token: @github_oauth_token
+      @github = Github.new oauth_token: @github_oauth_token, endpoint: @github_api_endpoint
     else
-      @github = Github.new
+      @github = Github.new endpoint: @github_api_endpoint
     end
-    
+
     @options[:max_results] = @options[:max_results].to_i
 
     if @options[:members] == "0"
@@ -81,7 +89,7 @@ class ScumblrTask::GithubSyncAnalyzer < ScumblrTask::Base
     else
       @options[:members] = true
     end
-   
+
   end
 
   def run
@@ -96,13 +104,13 @@ class ScumblrTask::GithubSyncAnalyzer < ScumblrTask::Base
         get_repos(m["login"],"user")
       end
     end
-    
+
 
     return []
 
   end
 
-  private 
+  private
 
 
   def get_repos(name, type)
@@ -124,9 +132,9 @@ class ScumblrTask::GithubSyncAnalyzer < ScumblrTask::Base
     parse_results(response)
 
 
-    
+
     while(response.has_next_page?)
-      puts "Getting new page"  
+      puts "Getting new page"
       response = response.next_page
       parse_results(response)
 
@@ -138,32 +146,30 @@ class ScumblrTask::GithubSyncAnalyzer < ScumblrTask::Base
     if e.try(:http_headers).try(:[],:retry_after).present?
       wait_for = e.http_headers["retry_after"].to_i
       puts "Sleeping for #{wait_for}"
-      sleep(wait_for + 1)
+      sleep(wait_for + 1) if wait_for.to_i > 0
     elsif(e.try(:http_headers).try(:[],"x-ratelimit-remaining").present? && e.try(:http_headers).try(:[],"x-ratelimit-remaining").to_i <= 1)
 
 
-      wait_for = e.http_headers["x-ratelimit-reset"].to_i - Time.now.to_i 
-      
+      wait_for = e.http_headers["x-ratelimit-reset"].to_i - Time.now.to_i
+
       puts "Sleeping for #{wait_for}"
-      sleep (wait_for + 1)
+      sleep (wait_for + 1) if wait_for.to_i > 0
     else
       create_error("Unknown Github error", "Warn")
-      
+
     end
   end
 
   def parse_results(response)
-
     puts "Rate limit: #{response.headers.ratelimit_remaining} of #{response.headers.ratelimit_limit} remaining. Reset in #{response.response.headers["x-ratelimit-reset"].to_i - DateTime.now.to_i} seconds (#{response.response.headers["x-ratelimit-reset"]})"
-    
 
-    response.each do |repo|      
+
+    response.each do |repo|
       if(@options[:scope_visibility] == "both" || (repo.private == true && @options[:scope_visibility] == "private") || (repo.private == false && @options[:scope_visibility] == "public"))
         res = Result.where(url: repo.html_url).first_or_initialize
         res.title = repo.full_name
         res.domain = "github.com"
         res.metadata ||={}
-	puts repo
         res.metadata["github_analyzer"] ||={}
         res.metadata["github_analyzer"]["owner"] = repo["owner"]["login"]
         res.metadata["github_analyzer"]["language"] = repo["language"]
@@ -172,7 +178,8 @@ class ScumblrTask::GithubSyncAnalyzer < ScumblrTask::Base
         res.save
       end
     end
-    
+
+
 
 
   end

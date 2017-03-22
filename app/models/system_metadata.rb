@@ -15,7 +15,21 @@
 class SystemMetadata < ActiveRecord::Base
   validates :key, uniqueness: true
   validates :key, presence: true
-  # validates_format_of :url, with: /\A#{URI::regexp}\z/
+  validates :metadata, :presence => { :message => "bad json" }
+  # set custom emtadata presence message and check if nil using prescence
+  attr_accessor :metadata_raw
 
-  serialize :metadata, JSON
+  def metadata_raw
+    self.metadata.to_s
+  end
+
+  def metadata_raw=(value)
+    begin
+      self.metadata = JSON(value)
+
+    rescue
+      self.metadata = ""
+    end
+  end
+  # validates :start, :end, :values, :presence => true
 end

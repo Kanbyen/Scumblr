@@ -3,7 +3,7 @@ source 'https://rubygems.org'
 gem 'rails', '4.2.6'
 
 gem 'zip'
-
+gem 'lograge'
 # Allow using posix-spawn for popen to save memory with multiple threads.
 gem 'posix-spawn'
 
@@ -14,7 +14,7 @@ gem 'colorize', require: false
 gem 'twitter'
 gem 'market_bot'
 gem 'koala'
-gem "brakeman"
+gem "brakeman", require: false
 gem "bundler-audit"
 gem 'rest-client'
 gem 'chartkick'
@@ -117,6 +117,10 @@ gem 'stackprof'
 gem 'faraday'
 gem 'net-http-persistent'
 
+gem 'minitest'
+
+gem 'minitest-rails'
+
 group :development, :test, :production do
   gem 'unicorn'
   gem 'unicorn-rails'
@@ -148,7 +152,7 @@ end
 group :development, :dirtylaundrydev, :profile do
 
   gem 'byebug'
-  # gem 'quiet_assets'
+  gem 'quiet_assets'
   gem "better_errors"
   gem 'pry'
 
@@ -165,6 +169,10 @@ group :test do
   gem 'database_cleaner'
   gem 'shoulda'
   gem 'activerecord-nulldb-adapter'
+  gem 'minitest-reporters'
+  gem 'shoulda-matchers', '~> 2.0'
+  gem 'shoulda-callback-matchers', '~> 1.1.1'
+  gem 'simplecov', :require => false, :group => :test
 end
 
 gem 'foundation-rails', '5.3.3.0'
@@ -184,3 +192,14 @@ gem 'rb-readline'
 # needed by  sidekiq
 gem 'json'
 gem 'ffi'
+
+
+if File.exists?("custom/Gemfile")
+  eval(IO.read("custom/Gemfile"), binding)
+end
+if File.exists?("../custom/Gemfile")
+  eval(IO.read("../custom/Gemfile"), binding)
+end
+if File.exists?("./Gemfile.append")
+  eval(IO.read("./Gemfile.append"), binding)
+end
